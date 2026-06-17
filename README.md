@@ -9,8 +9,8 @@ dataset (1.48M real listings).
 Built across three phases: **data preprocessing**, **model training & evaluation**,
 and **deployment** via FastAPI + Docker.
 
-**Docker Hub:** `docker pull mahadiirl/mercari-price-app:latest`  
-**Live demo:** `docker run -p 8000:8000 mahadiirl/mercari-price-app` → http://127.0.0.1:8000
+**Docker Hub Link:** `https://hub.docker.com/r/mahadiirl/mercari-price-app`
+**Run on Local Machine:** `docker pull mahadiirl/mercari-price-app:latest`  
 
 ---
 
@@ -22,7 +22,7 @@ and **deployment** via FastAPI + Docker.
 4. [Phase II — Model training & evaluation](#phase-ii--model-training--evaluation)
 5. [Phase III — Deployment](#phase-iii--deployment)
 6. [Setup & usage](#setup--usage)
-7. [Methodology notes — what went wrong and why it matters](#methodology-notes--what-went-wrong-and-why-it-matters)
+7. [Methodology notes](#methodology-notes)
 
 ---
 
@@ -82,7 +82,7 @@ mercari-price/
 │   └── templates/
 │       └── index.html              # Frontend form with model/data-version toggles
 │
-├── eda.ipynb                       # Phase I + II — complete sequential notebook
+├── notebooks.ipynb                       # Phase I + II — complete sequential notebook
 ├── Dockerfile
 ├── .dockerignore
 ├── .gitignore
@@ -93,7 +93,7 @@ mercari-price/
 
 > **Note:** `data/` and `models/` are excluded from version control
 > (see `.gitignore`). To reproduce them, download `train.tsv` from Kaggle
-> and run all cells in `eda.ipynb` — this regenerates every file in both
+> and run all cells in `notebooks.ipynb` — this regenerates every file in both
 > directories from scratch.
 
 ---
@@ -175,7 +175,7 @@ and follow up on every surprising result rather than ignoring it.
 The 12 numeric features required `StandardScaler` before being combined with
 TF-IDF — raw numeric values up to ~4800 completely drowned out TF-IDF values
 (~0–0.5), making Ridge's `alpha` hyperparameter ineffective until scaling was
-applied. See [Methodology notes](#methodology-notes--what-went-wrong-and-why-it-matters).
+applied. See [Methodology notes](#methodology-notes).
 
 ### Split ratios tested
 
@@ -337,7 +337,7 @@ in order. This generates:
 - All 10 model files + 6 preprocessing objects in `models/`
 - 8 charts in `plots/`
 
-> ⚠️ The LightGBM_full training cell (~32 min) and the 100% data
+> The LightGBM_full training cell (~32 min) and the 100% data
 > LightGBM_full cell (~40 min) are the slow steps. All other cells
 > complete in under 2 minutes each.
 
@@ -378,20 +378,9 @@ curl -X POST http://127.0.0.1:8000/predict \
   }'
 ```
 
-### 6. Deploy to Render (cloud)
-
-1. Create a [Render](https://render.com) account
-2. New → Web Service → **Deploy an existing image from a registry**
-3. Image URL: `mahadiirl/mercari-price-app:latest`
-4. Instance type: **Standard (2GB RAM)** — the full model set requires
-   ~600–900 MB in memory; the free tier (512 MB) will OOM on startup
-
-> The `Dockerfile` uses `${PORT:-8000}` so Render's injected `PORT`
-> environment variable is handled automatically.
-
 ---
 
-## Methodology notes — what went wrong and why it matters
+## Methodology notes
 
 Real debugging stories with transferable lessons.
 
@@ -440,14 +429,6 @@ Two bugs only appeared when hand-typed listings entered the pipeline:
 invisible in any training-data-only evaluation. **Lesson: test your deployment
 pipeline with deliberately adversarial inputs — unseen values, wrong casing,
 empty fields — before containerising.**
-
-**5. The same OpenMP issue appeared twice on two different operating systems.**
-LightGBM requires OpenMP. macOS: Homebrew's `libomp` (`brew install libomp`).
-Linux container: `apt-get install libgomp1`. Same root cause, different package
-name, different OS. The issue appeared twice — once when setting up the local
-environment (Step 1), once when the FastAPI app's `joblib.load()` imported
-LightGBM in a fresh process (Step 23). Recognising the pattern the second time
-made the Docker fix a one-liner rather than another debugging session.
 
 ---
 
